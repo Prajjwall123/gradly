@@ -1,4 +1,5 @@
 const express = require("express");
+const cors = require("cors");
 const connectDB = require("./config/db");
 const app = express();
 
@@ -9,6 +10,14 @@ const userRoutes = require("./routes/userRoutes");
 
 connectDB();
 
+const corsOptions = {
+    origin: "http://localhost:5173",
+    methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+    credentials: true,
+    allowedHeaders: ["Content-Type", "Authorization"],
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use("/api/universities", universityRoutes);
