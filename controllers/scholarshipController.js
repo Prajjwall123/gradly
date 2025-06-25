@@ -1,4 +1,5 @@
 const Scholarship = require("../models/scholarship");
+const University = require("../models/university");
 
 const getAllScholarships = async (req, res) => {
     try {
@@ -66,15 +67,62 @@ const deleteScholarship = async (req, res) => {
 
 const createScholarship = async (req, res) => {
     try {
+        // 1. First validate that the university exists
+        const university = await University.findById(req.body.university);
+        if (!university) {
+            return res.status(404).json({ message: "University not found" });
+        }
+
+        // 2. Create and save the scholarship
         const scholarship = new Scholarship(req.body);
         const savedScholarship = await scholarship.save();
+
+        // 3. Add scholarship to university's scholarships array if not already present
+        if (!university.scholarships.includes(savedScholarship._id)) {
+            university.scholarships.push(savedScholarship._id);
+            await university.save();
+        }
+
         res.status(201).json(savedScholarship);
     } catch (error) {
         console.error("Error creating scholarship:", error);
-        res.status(400).json({ message: error.message });
+        res.status(400).json({
+            message: error.message,
+            error: error.toString()
+        });
     }
 };
 
+// In scholarshipController.js
+const getScholarshipsByUniversity = async (req, res) => {
+    try {
+        const { universityId } = req.params;
+
+        // Validate if university exists
+        const university = await University.findById(universityId);
+        if (!university) {
+            return res.status(404).json({ message: "University not found" });
+        }
+
+        const scholarships = await Scholarship.find({ university: universityId })
+            .select('-__v')  // Exclude version key
+            .lean();  // Convert to plain JavaScript object
+
+        res.status(200).json({
+            university: {
+                _id: university._id,
+                name: university.university_name
+            },
+            scholarships
+        });
+    } catch (error) {
+        console.error("Error fetching scholarships by university:", error);
+        res.status(500).json({
+            message: "Error fetching scholarships",
+            error: error.message
+        });
+    }
+};
 
 module.exports = {
     getAllScholarships,
@@ -82,4 +130,5 @@ module.exports = {
     updateScholarship,
     deleteScholarship,
     createScholarship,
+    getScholarshipsByUniversity
 };

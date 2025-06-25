@@ -6,7 +6,8 @@ const {
     getScholarshipById,
     updateScholarship,
     deleteScholarship,
-    createScholarship
+    createScholarship,
+    getScholarshipsByUniversity
 } = require("../controllers/scholarshipController");
 
 router.get("/", getAllScholarships);
@@ -14,5 +15,6 @@ router.post("/", createScholarship);
 router.get("/:id", getScholarshipById);
 router.put("/:id", updateScholarship);
 router.delete("/:id", deleteScholarship);
+router.get("/university/:universityId", getScholarshipsByUniversity);
 
 module.exports = router;

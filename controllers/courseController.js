@@ -1,4 +1,6 @@
+const mongoose = require('mongoose');
 const Course = require("../models/course");
+const University = require("../models/university")
 
 const getAllCourses = async (req, res) => {
     try {
@@ -107,12 +109,26 @@ const deleteCourse = async (req, res) => {
 
 const createCourse = async (req, res) => {
     try {
+        const university = await University.findById(req.body.university);
+        if (!university) {
+            return res.status(404).json({ message: "University not found" });
+        }
+
         const course = new Course(req.body);
         const savedCourse = await course.save();
+
+        if (!university.courses.includes(savedCourse._id)) {
+            university.courses.push(savedCourse._id);
+            await university.save();
+        }
+
         res.status(201).json(savedCourse);
     } catch (error) {
         console.error("Error creating course:", error);
-        res.status(400).json({ message: error.message });
+        res.status(400).json({
+            message: error.message,
+            error: error.toString()
+        });
     }
 };
 
