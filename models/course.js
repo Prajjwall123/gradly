@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const CourseSchema = new mongoose.Schema({
-    course_number: { type: mongoose.Schema.Types.ObjectId, ref: "Course", unique: true },
     course_name: String,
     course_level: {
         type: String,
@@ -10,7 +9,11 @@ const CourseSchema = new mongoose.Schema({
     university: { type: mongoose.Schema.Types.ObjectId, ref: 'University', required: true },
     course_tuition: Number,
     application_fee: Number,
-    course_duration: String
+    course_duration: String,
+    about: String,
+    entry_requirements: [String],
+    modules: [String],
+    intake: String
 });
 
 module.exports = mongoose.model('Course', CourseSchema);

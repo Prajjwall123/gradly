@@ -10,11 +10,11 @@ const generateOTP = () => {
     return Math.floor(100000 + Math.random() * 900000).toString();
 };
 
+
 // Register user - creates OTP
 const register = async (req, res) => {
     try {
-        const { full_name, email, password } = req.body;
-
+        const { fullName, email, password } = req.body;
         // Check if user already exists
         const existingUser = await User.findOne({ email });
         if (existingUser) {
@@ -26,11 +26,11 @@ const register = async (req, res) => {
 
         // Generate OTP
         const otp = generateOTP();
-        const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
         // Create OTP entry
         const otpEntry = new OTP({
-            full_name,
+            full_name: fullName,
             email,
             password: hashedPassword,
             otp,

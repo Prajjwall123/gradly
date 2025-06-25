@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 
 const UniversitySchema = new mongoose.Schema({
-    university_number: { type: mongoose.Schema.Types.ObjectId, ref: "University", unique: true },
     university_name: String,
     city: String,
     country: String,
@@ -15,6 +14,9 @@ const UniversitySchema = new mongoose.Schema({
     founded: Number,
     institution_type: { type: String, enum: ['private', 'public'] },
     university_photo: String,
+    website: String,
+    email: String,
+    phone: String,
     courses: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Course' }],
     scholarships: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Scholarship' }]
 });

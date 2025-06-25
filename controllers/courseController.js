@@ -2,8 +2,30 @@ const Course = require("../models/course");
 
 const getAllCourses = async (req, res) => {
     try {
-        const courses = await Course.find().populate("university");
-        res.status(200).json(courses);
+        const courses = await Course.find()
+            .populate({
+                path: 'university',
+                select: 'university_name city country university_photo'
+            })
+            .lean(); // Convert to plain JavaScript object
+
+        // Format the response to include university details at the root level
+        const formattedCourses = courses.map(course => {
+            const { university, ...courseData } = course;
+            return {
+                ...courseData,
+                university: {
+                    _id: university?._id,
+                    name: university?.university_name,
+                    location: `${university?.city}, ${university?.country}`,
+                    photo: university?.university_photo
+                        ? `/api/images/${university.university_photo}`
+                        : null
+                }
+            };
+        });
+
+        res.status(200).json(formattedCourses);
     } catch (error) {
         console.error("Error fetching courses:", error);
         res.status(500).json({ message: error.message });
@@ -11,15 +33,34 @@ const getAllCourses = async (req, res) => {
 };
 
 const getCourseById = async (req, res) => {
-    const { id } = req.params;
     try {
-        const course = await Course.findById(id).populate("university");
+        const { id } = req.params;
+        const course = await Course.findById(id)
+            .populate({
+                path: 'university',
+                select: 'university_name city country university_photo'
+            })
+            .lean(); // Convert to plain JavaScript object
 
         if (!course) {
             return res.status(404).json({ message: "Course not found" });
         }
 
-        res.status(200).json(course);
+        // Format the response to include university details at the root level
+        const { university, ...courseData } = course;
+        const formattedCourse = {
+            ...courseData,
+            university: {
+                _id: university?._id,
+                name: university?.university_name,
+                location: `${university?.city}, ${university?.country}`,
+                photo: university?.university_photo
+                    ? `/api/images/${university.university_photo}`
+                    : null
+            }
+        };
+
+        res.status(200).json(formattedCourse);
     } catch (error) {
         console.error("Error fetching course:", error);
         res.status(500).json({ message: error.message });
