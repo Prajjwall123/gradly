@@ -3,6 +3,7 @@ const OTP = require("../models/otp");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
+const { createProfile } = require("./profileController");
 const { sendOTPEmail } = require("../utils/email");
 
 // Generate OTP
@@ -57,24 +58,20 @@ const register = async (req, res) => {
     }
 };
 
-// Verify OTP and create user
 const verifyOTP = async (req, res) => {
     try {
         const { email, otp } = req.body;
 
-        // Find OTP entry
         const otpEntry = await OTP.findOne({ email, otp });
         if (!otpEntry) {
             return res.status(400).json({ message: "Invalid OTP or email" });
         }
 
-        // Check if OTP has expired
         if (new Date() > otpEntry.expiresAt) {
             await OTP.deleteOne({ _id: otpEntry._id });
             return res.status(400).json({ message: "OTP has expired" });
         }
 
-        // Create user
         const user = new User({
             full_name: otpEntry.full_name,
             email: otpEntry.email,
@@ -82,22 +79,25 @@ const verifyOTP = async (req, res) => {
         });
 
         await user.save();
-        // Delete OTP entry after successful verification
+
+        try {
+            await createProfile(user._id);
+        } catch (profileError) {
+            console.error('Error creating profile:', profileError);
+        }
+
         await OTP.deleteOne({ _id: otpEntry._id });
 
         res.status(201).json({
-            message: "User created successfully",
-            user: {
-                _id: user._id,
-                full_name: user.full_name,
-                email: user.email
-            }
+            message: "User registered successfully",
+            userId: user._id
         });
     } catch (error) {
         console.error("Error verifying OTP:", error);
         res.status(500).json({ message: error.message });
     }
 };
+
 
 // Login user
 const login = async (req, res) => {
