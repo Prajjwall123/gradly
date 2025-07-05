@@ -13,7 +13,8 @@ const CourseSchema = new mongoose.Schema({
     about: String,
     entry_requirements: [String],
     modules: [String],
-    intake: String
+    intake: [String],
+    terms_and_conditions: [String]
 });
 
 module.exports = mongoose.model('Course', CourseSchema);
