@@ -56,10 +56,6 @@ const profileSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    passport_number: {
-        type: String,
-        unique: true
-    },
     first_language: {
         type: String,
     },
