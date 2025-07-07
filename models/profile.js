@@ -28,6 +28,14 @@ const profileSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    education_transcript: {
+        type: String,
+        trim: true
+    },
+    english_transcript: {
+        type: String,
+        trim: true
+    },
     graduation_year: {
         type: Number,
         min: 1900,

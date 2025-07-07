@@ -1,4 +1,17 @@
-const Profile = require('../models/profile');
+const Profile = require("../models/profile");
+const fs = require('fs');
+const path = require('path');
+
+// Helper function to handle file cleanup
+const cleanupOldFile = async (userId, fieldName) => {
+    const existingProfile = await Profile.findOne({ user: userId });
+    if (existingProfile?.[fieldName]) {
+        const oldFilePath = path.join(__dirname, `../uploads/transcripts/${fieldName}`, existingProfile[fieldName]);
+        if (fs.existsSync(oldFilePath)) {
+            fs.unlinkSync(oldFilePath);
+        }
+    }
+};
 
 const createProfile = async (userId) => {
     try {
@@ -13,15 +26,16 @@ const createProfile = async (userId) => {
 
 const getProfile = async (req, res) => {
     try {
-        const { userId } = req.params;
-        const profile = await Profile.findOne({ user: userId }).populate('user', 'email full_name');
+        const profile = await Profile.findOne({ user: req.params.userId })
+            .populate('user', 'full_name email');
+
         if (!profile) {
-            return res.status(404).json({ message: 'Profile not found' });
+            return res.status(404).json({ message: "Profile not found" });
         }
-        res.status(200).json(profile);
+
+        res.json(profile);
     } catch (error) {
-        console.error('Error fetching profile:', error);
-        res.status(500).json({ message: 'Server error' });
+        res.status(500).json({ message: error.message });
     }
 };
 
@@ -30,24 +44,43 @@ const updateProfile = async (req, res) => {
         const { userId } = req.params;
         const updates = req.body;
 
+        // Handle education transcript upload if present
+        if (req.files?.education_transcript) {
+            await cleanupOldFile(userId, 'education_transcript');
+            updates.education_transcript = req.files.education_transcript[0].filename;
+        }
+
+        // Handle English transcript upload if present
+        if (req.files?.english_transcript) {
+            await cleanupOldFile(userId, 'english_transcript');
+            updates.english_transcript = req.files.english_transcript[0].filename;
+        }
+
         const profile = await Profile.findOneAndUpdate(
             { user: userId },
-            { $set: updates },
+            updates,
             { new: true, runValidators: true }
         );
 
         if (!profile) {
-            return res.status(404).json({ message: 'Profile not found' });
+            return res.status(404).json({ message: "Profile not found" });
         }
 
-        res.status(200).json(profile);
+        res.json(profile);
     } catch (error) {
-        console.error('Error updating profile:', error);
-        const status = error.name === 'ValidationError' ? 400 : 500;
-        res.status(status).json({
-            message: error.message,
-            ...(process.env.NODE_ENV === 'development' && { error: error.toString() })
-        });
+        // Clean up uploaded files if there was an error
+        if (req.files) {
+            Object.values(req.files).forEach(fileArray => {
+                fileArray.forEach(file => {
+                    const filePath = path.join(__dirname, `../uploads/transcripts/${file.fieldname}`, file.filename);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                });
+            });
+        }
+
+        res.status(400).json({ message: error.message });
     }
 };
 
