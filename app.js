@@ -15,6 +15,7 @@ const contactRoutes = require('./routes/contactRoutes');
 const scholarshipApplicationRoutes = require('./routes/scholarshipApplicationRoutes');
 const authRoutes = require('./routes/authRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
+const fileRoutes = require('./routes/fileRoutes');
 
 connectDB();
 
@@ -39,6 +40,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/profiles", profileRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use("/api/application-decisions", applicationDecisionRoutes);
+app.use("/api/files", fileRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/scholarship-applications', scholarshipApplicationRoutes);
 app.use('/api/auth', authRoutes);
