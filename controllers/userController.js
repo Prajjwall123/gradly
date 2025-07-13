@@ -1,9 +1,9 @@
 const User = require("../models/user");
 const OTP = require("../models/otp");
+const Profile = require("../models/profile");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
-const { createProfile } = require("./profileController");
 const { sendOTPEmail } = require("../utils/email");
 
 // Generate OTP
@@ -72,6 +72,7 @@ const verifyOTP = async (req, res) => {
             return res.status(400).json({ message: "OTP has expired" });
         }
 
+        // Create user
         const user = new User({
             full_name: otpEntry.full_name,
             email: otpEntry.email,
@@ -81,9 +82,22 @@ const verifyOTP = async (req, res) => {
         await user.save();
 
         try {
-            await createProfile(user._id);
+            console.log('Creating profile for user:', user._id);
+            // Create profile with only the required fields
+            const profileData = {
+                user: user._id,
+                full_name: user.full_name,
+                email: user.email
+            };
+            console.log('Profile data being created:', profileData);
+
+            const profile = await Profile.create(profileData);
+            console.log('Profile created successfully:', profile._id);
         } catch (profileError) {
             console.error('Error creating profile:', profileError);
+            // If profile creation fails, delete the user to maintain data consistency
+            await User.deleteOne({ _id: user._id });
+            throw new Error('Failed to create user profile');
         }
 
         await OTP.deleteOne({ _id: otpEntry._id });

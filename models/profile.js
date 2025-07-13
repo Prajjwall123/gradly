@@ -4,7 +4,20 @@ const profileSchema = new mongoose.Schema({
     user: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
+        required: true,
         unique: true
+    },
+    full_name: {
+        type: String,
+        required: [true, 'Full name is required'],
+        trim: true
+    },
+    email: {
+        type: String,
+        required: [true, 'Email is required'],
+        trim: true,
+        lowercase: true,
+        match: [/^\S+@\S+\.\S+$/, 'Please use a valid email address']
     },
     gender: {
         type: String,
@@ -131,6 +144,7 @@ const profileSchema = new mongoose.Schema({
     timestamps: true
 });
 
+profileSchema.index({ email: 1 });
 profileSchema.index({ user: 1 }, { unique: true });
 
 module.exports = mongoose.model('Profile', profileSchema);
