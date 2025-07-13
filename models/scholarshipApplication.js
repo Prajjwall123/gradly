@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
 
 const scholarshipApplicationSchema = new mongoose.Schema({
-    profile: {
+    user: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Profile',
+        ref: 'User',
         required: true
     },
     scholarship: {
@@ -11,22 +11,45 @@ const scholarshipApplicationSchema = new mongoose.Schema({
         ref: 'Scholarship',
         required: true
     },
+    application: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Application',
+        required: true
+    },
     status: {
         type: String,
-        enum: ['pending', 'under_review', 'approved', 'rejected', 'cancelled'],
+        enum: ['pending', 'under_review', 'accepted', 'rejected'],
         default: 'pending'
     },
-    appliedAt: {
-        type: Date,
-        default: Date.now
+    acceptanceLetter: {
+        type: String,
+        default: null
     },
-    updatedAt: {
+    rejectionLetter: {
+        type: String,
+        default: null
+    },
+    acceptedAt: {
         type: Date,
-        default: Date.now
+        default: null
+    },
+    rejectedAt: {
+        type: Date,
+        default: null
+    },
+    message: {
+        type: String,
+        trim: true
     }
-});
+}, { timestamps: true });
 
-// Ensure a user can't apply for the same scholarship twice
-scholarshipApplicationSchema.index({ profile: 1, scholarship: 1 }, { unique: true });
+// Prevent duplicate applications
+scholarshipApplicationSchema.index({ user: 1, scholarship: 1 }, { unique: true });
+
+// Add a method to check if the application is eligible for scholarship
+scholarshipApplicationSchema.methods.isEligibleForScholarship = async function () {
+    const application = await mongoose.model('Application').findById(this.application);
+    return application && application.status !== 'rejected';
+};
 
 module.exports = mongoose.model('ScholarshipApplication', scholarshipApplicationSchema);
