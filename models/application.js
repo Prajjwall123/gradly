@@ -21,8 +21,24 @@ const ApplicationSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['pending', 'under_review', 'accepted', 'rejected', 'cancelled'],
+        enum: ['pending', 'under_review', 'accepted', 'rejected', 'waitlisted', 'cancelled'],
         default: 'pending'
+    },
+    acceptanceLetter: {
+        type: String, // Path to the uploaded PDF file
+        default: null
+    },
+    rejectionLetter: {
+        type: String, // Path to the uploaded PDF file
+        default: null
+    },
+    acceptedAt: {
+        type: Date,
+        default: null
+    },
+    rejectedAt: {
+        type: Date,
+        default: null
     },
     appliedAt: {
         type: Date,
@@ -32,7 +48,7 @@ const ApplicationSchema = new mongoose.Schema({
         type: Date,
         default: Date.now
     }
-});
+}, { timestamps: true });
 
 // Compound index to ensure one application per profile per course
 ApplicationSchema.index({ profile: 1, course: 1 }, { unique: true });
