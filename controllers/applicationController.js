@@ -153,11 +153,59 @@ const deleteApplication = async (req, res) => {
     }
 };
 
+// Update SOP for an application
+const updateApplicationSOP = async (req, res) => {
+    try {
+        const { applicationId } = req.params;
+        const { sop, userId } = req.body;
+
+        if (!sop) {
+            return res.status(400).json({ message: "SOP content is required" });
+        }
+
+        if (!userId) {
+            return res.status(400).json({ message: "User ID is required" });
+        }
+
+        const application = await Application.findById(applicationId);
+
+        if (!application) {
+            return res.status(404).json({ message: "Application not found" });
+        }
+
+        // Check if the user making the request owns this application
+        const profile = await Profile.findOne({ user: userId });
+        if (!profile || !application.profile.equals(profile._id)) {
+            return res.status(403).json({ message: "Not authorized to update this application" });
+        }
+
+        // Update the SOP and set the status to under_review
+        application.sop = sop;
+        application.status = 'under_review';
+        application.updatedAt = Date.now();
+
+        await application.save();
+
+        res.json({
+            message: "SOP updated successfully",
+            application: {
+                id: application._id,
+                status: application.status,
+                sop: application.sop
+            }
+        });
+    } catch (error) {
+        console.error("Error updating SOP:", error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
 module.exports = {
     createApplication,
     getApplicationById,
     getApplicationsByProfile,
     updateApplicationStatus,
     deleteApplication,
-    getApplicationsByUser
+    getApplicationsByUser,
+    updateApplicationSOP
 };

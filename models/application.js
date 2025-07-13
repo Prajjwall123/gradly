@@ -15,6 +15,10 @@ const ApplicationSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    sop: {
+        type: String,
+        trim: true
+    },
     status: {
         type: String,
         enum: ['pending', 'under_review', 'accepted', 'rejected', 'cancelled'],
@@ -30,6 +34,7 @@ const ApplicationSchema = new mongoose.Schema({
     }
 });
 
+// Compound index to ensure one application per profile per course
 ApplicationSchema.index({ profile: 1, course: 1 }, { unique: true });
 
 module.exports = mongoose.model('Application', ApplicationSchema);
