@@ -12,6 +12,7 @@ const profileRoutes = require("./routes/profileRoutes");
 const applicationRoutes = require("./routes/applicationRoutes");
 const contactRoutes = require('./routes/contactRoutes');
 const scholarshipApplicationRoutes = require('./routes/scholarshipApplicationRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 connectDB();
 
@@ -34,6 +35,7 @@ app.use("/api/profiles", profileRoutes);
 app.use("/api/applications", applicationRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/scholarship-applications', scholarshipApplicationRoutes);
+app.use('/api/auth', authRoutes);
 
 const port = 3000;
 app.listen(port, () => {
