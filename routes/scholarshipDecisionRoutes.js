@@ -28,7 +28,15 @@ const upload = multer({
 // Accept a scholarship application (with optional acceptance letter)
 router.post(
     '/:scholarshipAppId/accept',
-    upload.single('file'),
+    upload.single('file'),  // 'file' is the field name in the form data
+    (req, res, next) => {
+        console.log('File upload middleware:', {
+            file: req.file ? 'File received' : 'No file received',
+            body: req.body,
+            params: req.params
+        });
+        next();
+    },
     acceptScholarshipApplication
 );
 

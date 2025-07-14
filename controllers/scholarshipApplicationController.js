@@ -11,34 +11,35 @@ const createScholarshipApplication = async (req, res) => {
     try {
         const { scholarshipId, userId } = req.body;
 
-        // 1. Check if scholarship exists and get university
+        // 1. Check if scholarship exists
         const scholarship = await Scholarship.findById(scholarshipId);
         if (!scholarship) {
-            return res.status(404).json({ message: 'Scholarship not found' });
+            return res.status(404).json({
+                success: false,
+                message: 'Scholarship not found'
+            });
         }
 
-        // 2. Find user and their profile
-        const user = await User.findById(userId);
-        if (!user) {
-            return res.status(404).json({ message: 'User not found' });
-        }
-
+        // 2. Find user's profile
         const profile = await Profile.findOne({ user: userId });
         if (!profile) {
-            return res.status(404).json({ message: 'Profile not found for this user' });
+            return res.status(404).json({
+                success: false,
+                message: 'Profile not found for this user'
+            });
         }
 
-        // 3. Check if user has applied to any course from the same university
-        const hasCourseApplication = await Application.findOne({
+        // 3. Find an application to a course in the same university
+        const application = await Application.findOne({
             profile: profile._id
-        })
-            .populate({
-                path: 'course',
-                match: { university: scholarship.university }
-            });
+        }).populate({
+            path: 'course',
+            match: { university: scholarship.university }
+        });
 
-        if (!hasCourseApplication || !hasCourseApplication.course) {
+        if (!application || !application.course) {
             return res.status(400).json({
+                success: false,
                 message: 'You must have an active application to a course from this university to apply for the scholarship'
             });
         }
@@ -51,29 +52,49 @@ const createScholarshipApplication = async (req, res) => {
 
         if (existingApplication) {
             return res.status(400).json({
+                success: false,
                 message: 'You have already applied for this scholarship'
             });
         }
 
         // 5. Create new scholarship application
         const scholarshipApplication = new ScholarshipApplication({
-            profile: profile._id,
+            user: userId,
+            profile: profile._id,  // Store both user and profile references
+            application: application._id,
             scholarship: scholarshipId,
             status: 'pending'
         });
 
         await scholarshipApplication.save();
 
+        // 6. Get the populated application data
+        const populatedApp = await ScholarshipApplication.findById(scholarshipApplication._id)
+            .populate('user', 'full_name email')
+            .populate('scholarship', 'name')
+            .populate('application');
+
+        // 7. Get the profile data separately
+        const profileData = await Profile.findOne({ user: userId })
+            .select('firstName lastName')
+            .lean();
+
+        // 8. Combine the data for the response
+        const response = {
+            ...populatedApp.toObject(),
+            profile: profileData
+        };
+
         res.status(201).json({
             success: true,
-            data: scholarshipApplication
+            data: response
         });
 
     } catch (error) {
         console.error('Error creating scholarship application:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error while processing scholarship application'
+            message: error.message || 'Server error while processing scholarship application'
         });
     }
 };
@@ -86,26 +107,35 @@ const getMyScholarshipApplications = async (req, res) => {
         const { userId } = req.query;
 
         if (!userId) {
-            return res.status(400).json({ message: 'User ID is required' });
+            return res.status(400).json({
+                success: false,
+                message: 'User ID is required'
+            });
         }
 
         // Find user's profile
         const profile = await Profile.findOne({ user: userId });
         if (!profile) {
-            return res.status(404).json({ message: 'Profile not found for this user' });
+            return res.status(404).json({
+                success: false,
+                message: 'Profile not found for this user'
+            });
         }
 
-        const applications = await ScholarshipApplication.find({ profile: profile._id })
-            .populate('scholarship')
-            .sort({ appliedAt: -1 });
+        // Find all scholarship applications for this user
+        const applications = await ScholarshipApplication.find({ user: userId })
+            .populate('scholarship', 'name description deadline')
+            .populate('application', 'status')
+            .sort({ createdAt: -1 });
 
-        res.status(200).json({
+        res.json({
             success: true,
             count: applications.length,
             data: applications
         });
+
     } catch (error) {
-        console.error('Error fetching scholarship applications:', error);
+        console.error('Error getting scholarship applications:', error);
         res.status(500).json({
             success: false,
             message: 'Server error while fetching scholarship applications'

@@ -37,28 +37,10 @@ const createNotification = async (req, res) => {
 const getUserNotifications = async (req, res) => {
     try {
         const { userId } = req.params;
-        const { limit = 20, page = 1 } = req.query;
 
-        const options = {
-            page: parseInt(page, 10),
-            limit: Math.min(parseInt(limit, 10), 50),
-            sort: { createdAt: -1 },
-            populate: [
-                {
-                    path: 'relatedEntity',
-                    select: '-__v',
-                    populate: {
-                        path: 'onModel',
-                        select: 'name title' // Adjust based on your models
-                    }
-                }
-            ]
-        };
-
-        const notifications = await Notification.paginate(
-            { user: userId },
-            options
-        );
+        const notifications = await Notification.find({ user: userId })
+            .populate('relatedEntity', 'title name')
+            .sort({ createdAt: -1 });
 
         res.json(notifications);
     } catch (error) {

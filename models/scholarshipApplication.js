@@ -6,6 +6,11 @@ const scholarshipApplicationSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    profile: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Profile',
+        required: true
+    },
     scholarship: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Scholarship',

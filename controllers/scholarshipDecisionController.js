@@ -1,6 +1,6 @@
 const ScholarshipApplication = require('../models/scholarshipApplication');
 const Notification = require('../models/notification');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 
 // Helper function to save file and return its path
@@ -19,55 +19,87 @@ const saveFile = (file, scholarshipAppId, type) => {
     return `/uploads/scholarship-letters/${filename}`;
 };
 
-// Accept a scholarship application
 const acceptScholarshipApplication = async (req, res) => {
     try {
         const { scholarshipAppId } = req.params;
         const { message } = req.body;
-        const acceptanceLetter = req.file;
+        const file = req.file; // Get the uploaded file
 
+        console.log('Accepting scholarship application:', {
+            scholarshipAppId,
+            hasFile: !!file,
+            message
+        });
+
+        // Find the scholarship application
         const scholarshipApp = await ScholarshipApplication.findById(scholarshipAppId)
             .populate('user', 'full_name email')
-            .populate('scholarship', 'name')
-            .populate('application', 'status');
+            .populate('scholarship', 'scholarship_name')
+            .populate('application');
 
         if (!scholarshipApp) {
-            return res.status(404).json({ message: 'Scholarship application not found' });
+            return res.status(404).json({
+                success: false,
+                message: 'Scholarship application not found'
+            });
         }
 
         // Check if the related application is rejected
-        if (scholarshipApp.application.status === 'rejected') {
+        if (scholarshipApp.application?.status === 'rejected') {
             return res.status(400).json({
                 success: false,
                 message: 'Cannot accept scholarship for a rejected application'
             });
         }
 
-        // Save acceptance letter if provided
         let letterPath = null;
-        if (acceptanceLetter) {
-            letterPath = saveFile(acceptanceLetter, scholarshipAppId, 'scholarship_acceptance');
+
+        // Handle file upload if exists
+        if (file) {
+            const uploadDir = path.join(__dirname, '../uploads/scholarship-letters');
+
+            // Create directory if it doesn't exist
+            await fs.mkdir(uploadDir, { recursive: true });
+
+            // Generate unique filename
+            const filename = `acceptance_${scholarshipApp._id}_${Date.now()}.pdf`;
+            letterPath = path.join('uploads/scholarship-letters', filename);
+            const fullPath = path.join(__dirname, '../', letterPath);
+
+            console.log('Saving file to:', fullPath);
+
+            // Save file
+            await fs.writeFile(fullPath, file.buffer);
         }
 
-        // Update scholarship application status
-        scholarshipApp.status = 'accepted';
-        scholarshipApp.acceptanceLetter = letterPath;
-        scholarshipApp.acceptedAt = new Date();
-        scholarshipApp.message = message;
-        await scholarshipApp.save();
+        // Update the scholarship application
+        const updateData = {
+            status: 'accepted',
+            acceptedAt: new Date(),
+            message: message || scholarshipApp.message
+        };
+
+        if (letterPath) {
+            updateData.acceptanceLetter = letterPath;
+        }
+
+        const updatedApp = await ScholarshipApplication.findByIdAndUpdate(
+            scholarshipAppId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        )
+            .populate('user', 'full_name email')
+            .populate('scholarship', 'scholarship_name')
+            .populate('application');
 
         // Create notification
         await Notification.create({
             user: scholarshipApp.user._id,
-            message: message || `Congratulations! Your scholarship application for ${scholarshipApp.scholarship.name} has been accepted.`,
+            message: `Your scholarship application for ${scholarshipApp.scholarship?.scholarship_name || 'scholarship'} has been accepted.`,
             relatedEntity: scholarshipApp._id,
-            onModel: 'ScholarshipApplication'
+            onModel: 'Scholarship',
+            isRead: false
         });
-
-        const updatedApp = await ScholarshipApplication.findById(scholarshipAppId)
-            .populate('user')
-            .populate('scholarship')
-            .populate('application');
 
         res.json({
             success: true,
@@ -79,7 +111,8 @@ const acceptScholarshipApplication = async (req, res) => {
         console.error('Error accepting scholarship application:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Error accepting scholarship application',
+            error: error.message
         });
     }
 };
@@ -89,41 +122,63 @@ const rejectScholarshipApplication = async (req, res) => {
     try {
         const { scholarshipAppId } = req.params;
         const { message } = req.body;
-        const rejectionLetter = req.file;
 
+        // Find the scholarship application
         const scholarshipApp = await ScholarshipApplication.findById(scholarshipAppId)
-            .populate('user', 'full_name email')
-            .populate('scholarship', 'name')
+            .populate('user')
+            .populate('scholarship')
             .populate('application');
 
         if (!scholarshipApp) {
-            return res.status(404).json({ message: 'Scholarship application not found' });
+            return res.status(404).json({
+                success: false,
+                message: 'Scholarship application not found'
+            });
         }
 
-        // Save rejection letter if provided
         let letterPath = null;
-        if (rejectionLetter) {
-            letterPath = saveFile(rejectionLetter, scholarshipAppId, 'scholarship_rejection');
+
+        // Handle file upload if exists
+        if (req.file) {
+            const file = req.file;
+            const uploadDir = path.join(__dirname, '../uploads/scholarship-letters');
+
+            // Create directory if it doesn't exist
+            await fs.mkdir(uploadDir, { recursive: true });
+
+            // Generate unique filename
+            const filename = `rejection_${scholarshipApp._id}_${Date.now()}.pdf`;
+            letterPath = path.join('uploads/scholarship-letters', filename);
+            const fullPath = path.join(__dirname, '../', letterPath);
+
+            // Save file
+            await fs.writeFile(fullPath, file.buffer);
         }
 
-        // Update scholarship application status
+        // Update the scholarship application
         scholarshipApp.status = 'rejected';
-        scholarshipApp.rejectionLetter = letterPath;
+        if (letterPath) {
+            scholarshipApp.rejectionLetter = letterPath;
+        }
+        if (message) {
+            scholarshipApp.message = message;
+        }
         scholarshipApp.rejectedAt = new Date();
-        scholarshipApp.message = message;
         await scholarshipApp.save();
 
         // Create notification
         await Notification.create({
             user: scholarshipApp.user._id,
-            message: message || `We regret to inform you that your scholarship application for ${scholarshipApp.scholarship.name} has been rejected.`,
+            message: `Your scholarship application for ${scholarshipApp.scholarship?.scholarship_name || 'scholarship'} has been rejected.`,
             relatedEntity: scholarshipApp._id,
-            onModel: 'ScholarshipApplication'
+            onModel: 'Scholarship',
+            isRead: false
         });
 
-        const updatedApp = await ScholarshipApplication.findById(scholarshipAppId)
-            .populate('user')
-            .populate('scholarship')
+        // Populate the response
+        const updatedApp = await ScholarshipApplication.findById(scholarshipApp._id)
+            .populate('user', 'full_name email')
+            .populate('scholarship', 'scholarship_name')
             .populate('application');
 
         res.json({
@@ -136,7 +191,8 @@ const rejectScholarshipApplication = async (req, res) => {
         console.error('Error rejecting scholarship application:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: 'Error rejecting scholarship application',
+            error: error.message
         });
     }
 };
