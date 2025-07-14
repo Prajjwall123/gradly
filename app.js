@@ -17,6 +17,7 @@ const scholarshipApplicationRoutes = require('./routes/scholarshipApplicationRou
 const authRoutes = require('./routes/authRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const fileRoutes = require('./routes/fileRoutes');
+const paymentRoutes = require('./routes/paymentRoutes');
 
 connectDB();
 
@@ -47,6 +48,7 @@ app.use('/api/contact', contactRoutes);
 app.use('/api/scholarship-applications', scholarshipApplicationRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use("/api/payments", paymentRoutes);
 
 const port = 3000;
 app.listen(port, () => {
